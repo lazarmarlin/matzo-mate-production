@@ -1,0 +1,21 @@
+# Core
+flask
+openfoodfacts
+python-dotenv
+openai
+
+# Async HTTP (replaces raw requests, much faster than selenium for most fetches)
+httpx
+beautifulsoup4
+lxml
+
+# Internet / Amazon search
+ddgs
+duckduckgo-search
+fake-useragent
+selenium
+selenium-stealth
+
+# USDA + parallel fetch
+anyio
+gunicorn

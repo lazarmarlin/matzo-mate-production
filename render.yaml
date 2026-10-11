@@ -1,18 +1,12 @@
-# Render Blueprint. Connect this repo in the Render dashboard and pick this file.
-# RENDER=true is set by Render, which switches the Nitro preset to render-com.
 services:
   - type: web
-    name: kiln
-    runtime: node
+    name: matzomate
+    runtime: python
     plan: free
     region: ohio
-    buildCommand: npm install && npm run build
-    startCommand: node .output/server/index.mjs
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn server:app --worker-class gthread --workers 1 --threads 8 --timeout 180 --bind 0.0.0.0:$PORT
     healthCheckPath: /api/health
     envVars:
-      - key: NODE_VERSION
-        value: "22.22.0"
-      - key: HOST
-        value: 0.0.0.0
-      - key: NITRO_PRESET
-        value: render-com
+      - key: PYTHON_VERSION
+        value: "3.12.8"
