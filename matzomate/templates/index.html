@@ -1,0 +1,176 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Live Output</title>
+
+        <!-- REQUIRED for mobile -->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        <style>
+            body {
+                background: #111;
+                color: #0f0;
+                font-family: monospace;
+                margin: 0;
+                padding: 12px;
+            }
+
+            h3 {
+                text-align: center;
+                margin-top: 0;
+            }
+
+            .controls {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 12px;
+            }
+
+            input#upc {
+                flex: 1;
+                padding: 12px;
+                font-size: 16px;
+                background: #000;
+                color: #0f0;
+                border: 1px solid #0f0;
+                border-radius: 6px;
+            }
+
+            button {
+                padding: 12px 16px;
+                font-size: 16px;
+                background: #0f0;
+                color: #000;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+            }
+
+            button:active {
+                opacity: 0.8;
+            }
+
+            #terminal {
+                white-space: pre-wrap;
+                padding: 12px;
+                height: 60vh;
+                overflow-y: auto;
+                border: 1px solid #0f0;
+                border-radius: 6px;
+                background: #000;
+                font-size: 14px;
+            }
+
+            #video {
+                display: none;
+                width: 100%;
+                max-height: 40vh;
+                margin-bottom: 10px;
+                border: 1px solid #0f0;
+                border-radius: 6px;
+            }
+
+            @media (max-width: 480px) {
+                .controls {
+                    flex-direction: column;
+                }
+            }
+        </style>
+    </head>
+
+    <body>
+        <h3>Matzo Mate</h3>
+
+        <video id="video" playsinline></video>
+
+        <div class="controls">
+            <input type="text" id="upc" placeholder="Enter UPC" />
+            <button id="scan">Scan</button>
+            <button id="start">Start</button>
+        </div>
+
+        <div id="terminal"></div>
+
+        <script>
+            let eventSource = null;
+            let stream = null;
+            let detector = null;
+            let scanning = false;
+
+            const upcInput = document.getElementById("upc");
+            const terminal = document.getElementById("terminal");
+            const video = document.getElementById("video");
+
+            // ---- BARCODE SCANNER ----
+            document.getElementById("scan").onclick = async () => {
+                if (!("BarcodeDetector" in window)) {
+                    alert("Barcode scanning not supported on this browser");
+                    return;
+                }
+
+                detector = new BarcodeDetector({
+                    formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128"]
+                });
+
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "environment" }
+                });
+
+                video.srcObject = stream;
+                video.style.display = "block";
+                await video.play();
+                scanning = true;
+
+                scanLoop();
+            };
+
+            async function scanLoop() {
+                if (!scanning) return;
+
+                try {
+                    const codes = await detector.detect(video);
+                    if (codes.length > 0) {
+                        upcInput.value = codes[0].rawValue;
+                        stopScan();
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+
+                requestAnimationFrame(scanLoop);
+            }
+
+            function stopScan() {
+                scanning = false;
+                video.style.display = "none";
+                stream?.getTracks().forEach(t => t.stop());
+            }
+
+            // ---- EXISTING STREAM LOGIC ----
+            document.getElementById("start").onclick = () => {
+                const upc = upcInput.value.trim();
+
+                if (!upc) {
+                    alert("Please enter a UPC");
+                    return;
+                }
+
+                if (eventSource) eventSource.close();
+
+                terminal.textContent = "Starting process...\n";
+
+                eventSource = new EventSource("/stream/" + encodeURIComponent(upc));
+
+                eventSource.onmessage = event => {
+                    terminal.textContent += event.data + "\n";
+                    terminal.scrollTop = terminal.scrollHeight;
+                };
+
+                eventSource.onerror = () => {
+                    terminal.textContent += "\n[Stream closed]\n";
+                    eventSource.close();
+                };
+            };
+        </script>
+    </body>
+</html>

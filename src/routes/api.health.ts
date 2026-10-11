@@ -1,0 +1,11 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { health, options } from "@/lib/json-http.server";
+
+export const Route = createFileRoute("/api/health")({
+  server: {
+    handlers: {
+      GET: () => health(),
+      OPTIONS: () => options(),
+    },
+  },
+});
